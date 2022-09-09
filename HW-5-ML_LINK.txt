@@ -1,0 +1,2 @@
+link for FMNIST:https://colab.research.google.com/drive/1AlaLAd4GzOY-speBxwpnEGuKosblJL2C?usp=sharing
+link for MNIST:https://colab.research.google.com/drive/1ruwhnRrzkZoNIZO81pOcyledrCUnMO70?usp=sharing

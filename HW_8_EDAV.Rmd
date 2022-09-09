@@ -1,0 +1,648 @@
+---
+title: "Homework 8, Balkoudi Michaela"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+
+#3.12.1.2 Example 1: Is gender correlated with heart disease?
+library(caret)
+library(funModeling)
+library(dplyr)
+library(tidyverse)
+# Loading funModeling!
+library(funModeling)
+library(dplyr)
+library(Hmisc)
+library(tidyverse)
+library(ggridges)
+library (readr)
+library(tidyr)
+library(lares)
+library(reshape2)
+library(GGally)
+library(devtools)
+library(minerva)
+library(RColorBrewer)
+library(ggplot2)
+library(DataExplorer)
+library(caret)
+#gia xartes
+library(sp)
+library(sf)
+library(spData)
+library(spDataLarge)
+library(rgdal)
+library(raster)
+library(tmap)
+
+```
+Fortwnw ta dedomena
+```{r}
+data = read.csv("C:/Users/mixmp/Desktop/διερευνητικη ανάλυση/ΕΡΓΑΣΙΕΣ/HW8/whisky.csv", header = TRUE)
+```
+
+```{r}
+colnames(data)# vlepw ta onomata twn metablhtwn tou data set
+str(data)#deixnei to eidos twn metablhtwn
+View(data)
+nrow(data)#plhthos parathrhsewn tou data set
+ncol(data)#plhthos twn mwtablhtwn tou data set
+glimpse(data)
+```
+
+
+```{r}
+glimpse(data)#me th describe vlepoume diafora statistika gia to dataset
+#gia kathe metablhth upologizontai basika metra,
+#gia kathgorikes vlepw suxnothtes, vlepw kai missing values
+
+
+```
+#parakatw vlepw me enan optiko tropo ti metablhtes uparxoun sto data set
+```{r}
+library(DataExplorer)
+
+plot_str(data)#vlepw me ena diaadrastiko graphhma tis entoles tou dataset
+```
+
+parakatw vlepw oti den exoume NA values sto data set
+```{r}
+plot_missing(data)#blepw gia kathe metablhth ta missing data
+
+#check NA values gia kathe metablhth tou dataset
+colSums(is.na(data))
+
+```
+```{r}
+
+# parakatw blepoume ta barplots twn metablhtwn tou data set, peran twn 
+#metablhtwn pou anaferontai sth gewgrafikh plhroforia. Parathroume oti oi metablhtes einai xarakthristika apo whiskey kai oi times tous einai diakrites 
+plot_num(data[,-c(1,16,17)])
+```
+
+sto parakatw vlepoume gia kathe oinopoieio ta xarakthristika twn whiskey pou paragoun
+```{r}
+whisky <- data %>% dplyr::select(Distillery:Floral)
+
+head(whisky)
+
+
+whisky.score <- whisky %>% 
+
+  gather(key = Review.point, value = Score, Body:Floral)
+
+whisky.score %>% 
+
+  ggplot(aes(x=Review.point, y = Score, fill = Review.point)) + 
+
+  geom_bar(stat = "identity") + 
+
+  theme(axis.title.x=element_blank(),
+
+        axis.text.x=element_blank(),
+
+        axis.ticks.x=element_blank()) + 
+
+  facet_wrap(~ Distillery)
+```
+
+sta parakatw grafhmata vlepoume endeiktika tis katanomes orismenwn xarakthristikwn twn whiskey
+
+```{r}
+mydata<-data
+dat_2<-mydata[,3:14]%>%group_by(Medicinal)%>%count()
+dat_2
+ggplot(data = dat_2) +
+  geom_bar(mapping = aes(x=Medicinal,y=n,fill=Medicinal), stat = "identity")+ggtitle('Distribution of Medicinal')
+
+```
+
+```{r}
+dat_2<-mydata[,3:14]%>%group_by(Body)%>%count()
+dat_2
+ggplot(data = dat_2) +
+  geom_bar(mapping = aes(x=Body,y=n,fill=Body), stat = "identity")+ggtitle('Distribution of Body')
+
+```
+
+
+
+metatrepw tis metablhtes ws kathgorikes pera apo autes pou prosdidoun gewgrafikh plhroforia
+```{r}
+mydata<-data
+mydata[,2:14] <- lapply(mydata[,2:14] , factor)#metatrepw tis metablhtes twn whiskey se kathgorikes metablhtes
+
+```
+me thn paraktw entolh vlepoume, tis suxnotetes twn kathgoriwn kathe metablhths
+```{r}
+describe(mydata)
+```
+
+
+
+
+parakatw vlepoume thn katanomh tou Tobacco ws pros tis kathgories tou Smoky
+```{r}
+cross_plot(mydata, input = "Smoky", target = "Tobacco", plot_type = "percentual")
+
+```
+
+
+
+Parakatw blepoume tis suxnothtes olwn twn kathgoriwn twn xarakthristikwn Body,
+Smoky,Floral,Medicinal,Winey,Nutty,Honey twn 86 whiskies.
+
+```{r}
+### Change Likert scores to factor and specify levels
+data_new<-data[,c("Nutty","Floral","Smoky","Winey","Honey","Body","Medicinal")]
+library(psych)
+library(likert)
+
+
+data_new$Nutty = factor(data_new$Nutty,
+                       levels = c("0", "1", "2", "3","4"),
+                       ordered = TRUE)
+
+data_new$Floral = factor(data_new$Floral,
+                       levels = c("0", "1", "2", "3", "4"),
+                       ordered = TRUE)
+
+data_new$Smoky = factor(data_new$Smoky,
+                       levels = c("0", "1", "2", "3", "4"),
+                       ordered = TRUE)
+data_new$Winey = factor(data_new$Winey,
+                       levels = c("0", "1", "2", "3","4"),
+                       ordered = TRUE)
+data_new$Honey = factor(data_new$Honey,
+                       levels = c("0", "1", "2", "3","4"),
+                       ordered = TRUE)
+data_new$Body = factor(data_new$Body,
+                       levels = c("0", "1", "2", "3","4"),
+                       ordered = TRUE)
+
+data_new$Medicinal = factor(data_new$Medicinal,
+                       levels = c("0", "1", "2", "3","4"),
+                       ordered = TRUE)
+
+Result = likert(data_new)
+```
+
+
+```{r}
+plot(Result,type="bar")
+```
+Apo to parapanw graphhma vlepoume oti h epikratesterh kathgoria gia to xarakthristiko Body einai h 2, h epikratesterh kathgoria se ola ta whiskey einai gia to xarakthristiko Smoky einai h 1, gia to xarakthristiko Floral einai h 2, gia to xarakthristiko Medicinal einai h 0, gia to xarakthristiko Winey einai h epikratesterh kathgoria einai h 1, gia to xarakthristiko Nutty h kathgoria 1, gia to xarakthristiko Honey h kathgoria 1
+
+
+Parakatw blepoume tis suxnothtes olwn twn kathgoriwn twn xarakthristikwn Malty,Fruity,Spicy twn 86 whiskies.
+
+```{r}
+### Change Likert scores to factor and specify levels
+data_new<-data[,c("Malty","Fruity","Spicy")]
+library(psych)
+library(likert)
+
+
+data_new$Malty = factor(data_new$Malty,
+                       levels = c("0", "1", "2", "3"),
+                       ordered = TRUE)
+data_new$Fruity = factor(data_new$Fruity,
+                       levels = c("0", "1", "2", "3"),
+                       ordered = TRUE)
+
+data_new$Spicy = factor(data_new$Spicy,
+                       levels = c("0", "1", "2", "3"),
+                       ordered = TRUE)
+
+Result = likert(data_new)
+
+plot(Result,
+     type="bar")
+```
+
+Apo to parapanw graphhma blepw oti gia tis kathgories Spicy,Fruity,Malty h epikratesterh kathgoria sta whiskey einai  h 3
+
+parakatw vlepoume thn katanomh tou Tobacco ws pros tis kathgories tou Winey, to galazio xrwma antistoixei sth 0 periektikothta 
+se Tobacco, enw to roz-portakali sthn 1 kathgoria tou Tobacco. Parathroume oti h kathgoria 0 tou Tobacco uperisxuei se
+oles tis kathgories tou Winey
+```{r}
+cross_plot(mydata, input = "Winey", target = "Tobacco", plot_type = "percentual")
+
+```
+
+sto parakatw grafhma blepoume ena akomh grafhma pou apeikonizei thn katanomh tou Tobacco stis kathgories tou Winey.Se oles tis kathgories tou Winey blepoume oti epikratei h kathgoria Tobacco:0
+```{r}
+cross_plot(data, input = "Winey", target = "Tobacco")
+```
+
+
+
+
+parakatw vlepoume thn katanomh tou xarakthristikou Tobacco se kathe kathgoria tou Winey gia ta whiskey pou diathetoume
+```{r}
+g <- ggplot(mydata, aes(Tobacco,fill=Tobacco))
+# Number of cars in each class:
+g + geom_bar()+facet_wrap(~Winey)+ggtitle("Distribution of Tobacco into the categories of Winey")+scale_fill_hue(l=40, c=35)
+```
+Sto parapanw grafhma parathroume oti se oles tis kathgories tou Winey, uperisxuei h kathgoria 0 gia to Tobacco kai malista stis kathgories 3,4 tou Winey, h kathgoria 1 Tobacco den sunantatai pote
+
+
+
+
+parakatw vlepoume thn katanomh tou Tobacco se kathe kathgoria tou Smoky xarakthristikou
+```{r}
+g <- ggplot(mydata, aes(Tobacco,fill=Tobacco))
+# Number of cars in each class:
+g + geom_bar()+facet_wrap(~Smoky)+ggtitle("Distribution of Tobacco into the categories of Smoky")+scale_fill_manual(values=c( "#E69F00", "#56B4E9"))
+```
+
+Apo to parakatw graphhma blepoume oti uperisxuei o sunduasmos kathgoriwn (Tobacco:0,Smoky:1)
+```{r}
+ggplot(data = data) +
+  geom_count(mapping = aes(x = Smoky, y = Tobacco))
+
+
+```
+
+
+To xrwma kathe tetragwnou parakatw antiprosopeuei posa whiskey apo to dataset antistoixoun stous sunduasmous twn kathgoriwn tou xarakthristikou Tobacco me to xarakthristiko Smoky
+```{r}
+
+mydata %>% 
+  count(Smoky, Tobacco) %>%  
+  ggplot(mapping = aes(x =Smoky, y = Tobacco)) +
+  geom_tile(mapping = aes(fill = n))
+
+
+```
+
+
+parakatw vlepoume thn katanomh tou Tobacco se kathe kathgoria tou Spicy xarakthristikou
+```{r}
+g <- ggplot(mydata, aes(Tobacco,fill=Tobacco))
+# Number of cars in each class:
+g + geom_bar()+facet_wrap(~Spicy)+ggtitle("Distribution of Tobacco into the categories of Spicy")+scale_fill_manual(values=c( "#DC71FA", "#00BBD0"))
+```
+
+Sto parapanw grafhma parathroume oti se oles tis kathgories tou Spicy, uperisxuei h kathgoria 0 gia to Tobacco.
+Malista sthn kathgoria 3 tou Spicy den exoume katholou  kathgoria 1 gia to Tobacco
+
+
+
+parakatw blepoume analoga me to megethos twn orthogoniwn sto mosaic plot, tis apo koinou suxnothes twn kathgoriwn twn xarakthristikwn
+Fruity,Tobacco,Sweetness twn whiskwy
+```{r}
+#analusi gia 3 metablhtes
+vcd::mosaic(Fruity ~ Tobacco + Sweetness, shade=T,
+            labeling = vcd::labeling_border(
+              abbreviate_labs = c(3, 10, 6),
+              rot_labels=c(0,0,-45)
+            ),
+            direction=c('v','v','h'), # Age = Vertical, Music = Vertical, Favoriate = Horizonal (a.k.a DoubleDecker)
+            gp = grid::gpar(fill=c('lightblue', 'pink')),
+            mydata)
+
+
+```
+
+
+parakatw blepoume analoga me to megethos twn orthogoniwn  tis apo koinou suxnothes twn kathgoriwn twn xarakthristikwn
+Honey,Tobacco,Sweetness twn whisky
+
+```{r}
+
+
+vcd::doubledecker(Honey~ Tobacco + Sweetness, data=mydata)
+
+
+```
+parakatw vlepoume oti o pio suxnos sunduasmos twn xarakthristikwn Honey and Malty einai (Honey:2, Malty:2)
+```{r}
+ggplot(data = data) +
+  geom_count(mapping = aes(x = Malty, y = Honey))
+
+
+```
+
+
+
+
+```{r}
+
+
+#DEIXNEI TOUS SUNDUASMOUS ME TETRAGWNA POU TO XRWMA ANTISOIXEI STO PLHTOS TOU SUNDUASMOU
+mydata %>% 
+  count(Malty,Honey) %>%  
+  ggplot(mapping = aes(x =Malty, y = Honey)) +
+  geom_tile(mapping = aes(fill = n))
+```
+paraktw blepoume thn katanomh tou Honey xarakthristikou twn whiskey stis kathgories tou Fruity
+```{r}
+ggplot(data = mydata) + 
+  stat_count(mapping = aes(x =Honey,fill=Fruity))+
+  ggtitle("Distribution of Honey into the catgories of Fruity",
+        subtitle = "Barplot") +
+  theme(plot.title = element_text(face = "bold")) +
+  theme(plot.subtitle = element_text(face = "bold", color = "grey35")) 
+```
+
+parakatw vlepoume oti o pio suxnos sunduasmos twn xarakthristikwn Honey and Fruity einai (Fruity:2, Honey:1)
+```{r}
+ggplot(data = data) +
+  geom_count(mapping = aes(x =Honey, y = Fruity))
+
+
+```
+
+
+
+
+
+
+paraktw blepoume thn katanomh tou Smoky xarakthristikou twn whiskey stis kathgories tou Spicy
+```{r}
+ggplot(data = mydata) + 
+  stat_count(mapping = aes(x =Smoky,fill=Spicy))+
+  ggtitle("Distribution of Smoky into the catgories of Spicy",
+        subtitle = "Barplot") +
+  theme(plot.title = element_text(face = "bold")) +
+  theme(plot.subtitle = element_text(face = "bold", color = "grey35")) 
+```
+paraktw blepoume thn katanomh tou Honey xarakthristikou twn whiskey stis kathgories tou Fruity
+```{r}
+ggplot(data = mydata) + 
+  stat_count(mapping = aes(x =Nutty,fill=Malty))+
+  ggtitle("Distribution of Nutty into the catgories of Malty",
+        subtitle = "Barplot") +
+  theme(plot.title = element_text(face = "bold")) +
+  theme(plot.subtitle = element_text(face = "bold", color = "grey35")) 
+```
+
+proetoimasia tou data frame gia to heatmap tou data frame
+```{r}
+data_n <- mydata[,2:14]
+data_n<-data_n[-1]
+rownames(data_n) <- mydata[,2]
+```
+
+Parakatw parousiazontai Charts: Cleveland Dot Plot , pou deixnoun gia kathe oinopoieio orimena apo ta
+xarakthristika apo ta whiskey pou paragoun
+
+
+```{r}
+theme_dotplot <- theme_bw(14) +
+  theme(axis.text.y = element_text(size = rel(.75)),
+        axis.ticks.y = element_blank(),
+        axis.title.x = element_text(size = rel(.75)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(size = 0.5),
+        panel.grid.minor.x = element_blank())
+
+# move row names to a dataframe column        
+df <-  data_n %>% tibble::rownames_to_column("distillery")
+
+# create the plot
+ggplot(df, aes(x = Medicinal, y = reorder(distillery, Medicinal))) +
+  geom_point(color = "blue") +
+  theme_dotplot +
+  xlab("\nMedicinal") +
+  ylab("Distillery\n") +
+  ggtitle("Distillery and Medicinal")
+
+
+
+```
+Apo to parapanw cleveland plot vlepoume oti apo tis kathgories tou Medicinal h epikratesterh einai h kathgoria Medicinal:0, kathws se authn anhkoun ta perissotera oinopoieia
+
+```{r}
+theme_dotplot <- theme_bw(14) +
+  theme(axis.text.y = element_text(size = rel(.75)),
+        axis.ticks.y = element_blank(),
+        axis.title.x = element_text(size = rel(.75)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(size = 0.5),
+        panel.grid.minor.x = element_blank())
+
+# move row names to a dataframe column        
+df <-  data_n %>% tibble::rownames_to_column("distillery")
+
+# create the plot
+ggplot(df, aes(x = Malty, y = reorder(distillery, Malty))) +
+  geom_point(color = "blue") +
+  theme_dotplot +
+  xlab("\nMalty") +
+  ylab("Distillery\n") +
+  ggtitle("Distillery and Malty")
+
+
+
+```
+
+Apo to parapanw cleveland plot vlepoume oti apo tis kathgories tou Malty h epikratesterh einai h kathgoria Malty:2, kathws se authn anhkoun ta perissotera oinopoieia
+
+```{r}
+theme_dotplot <- theme_bw(14) +
+  theme(axis.text.y = element_text(size = rel(.75)),
+        axis.ticks.y = element_blank(),
+        axis.title.x = element_text(size = rel(.75)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(size = 0.5),
+        panel.grid.minor.x = element_blank())
+
+# move row names to a dataframe column        
+df <-  data_n %>% tibble::rownames_to_column("distillery")
+
+# create the plot
+ggplot(df, aes(x = Honey, y = reorder(distillery, Honey))) +
+  geom_point(color = "blue") +
+  theme_dotplot +
+  xlab("\nHoney") +
+  ylab("Distillery\n") +
+  ggtitle("Distillery and Honey")
+```
+Apo to parapanw cleveland plot vlepoume oti apo tis kathgories tou Honey oi ligotero epikratesteres einai oi 3,4, kathws se auto anhkoun elaxista oinopoeia
+
+
+
+Parakatw blepoume to heatmap tou whiskey Data frame
+```{r}
+data_new <- data_n %>%
+  rownames_to_column() %>%
+  gather(colname, value, -rowname)
+
+
+ggplot(data_new, aes(x = rowname, y = colname, fill = value)) +
+  geom_tile() + 
+  ggtitle("Heatmap of Whiskey data frame")
+```
+Xartes
+
+parakatw blepoume tis topothesies twn apostakthriwn twn whiskey sthn Agglia
+
+```{r}
+
+whiskey<-data
+whiskies.coord <- data.frame(whiskey$Latitude, whiskey$Longitude)
+
+coordinates(whiskies.coord) <- ~whiskey.Latitude + whiskey.Longitude
+
+
+crs(whiskies.coord)
+#gia thn agglia
+proj4string(whiskies.coord) <- CRS("+init=epsg:27700")
+#gia th xrhsh tous sto world map
+whiskies.coord <- spTransform(whiskies.coord, CRS("+init=epsg:4326"))
+
+
+whiskey.map <- 
+  
+  data.frame(Distillery = whiskey$Distillery,
+             
+             lat = whiskies.coord$whiskey.Latitude,
+             
+             long = whiskies.coord$whiskey.Longitude)
+
+#dhmiourgw to sf arxeio gia to data set me ta whiskey
+whiskey_sf = st_as_sf(whiskey.map, coords = c("lat", "long"), crs = 4326, agr = "constant")
+
+
+
+
+
+
+```
+parakatw vlepoume to antistoixo sf arxeio gia to data frame pou tha to xrhsimopoihsoume gia th dhmiourgia xartwm me thn bibliothhkh tma\ap
+```{r}
+head(whiskey_sf)
+
+```
+
+
+
+paraktw vlepoume tis topothesies twn oinopoieiwn sthn Agglia
+```{r}
+library(leaflet)
+
+leaflet()%>%
+  addTiles()%>%
+  addMarkers(lng=whiskies.coord$whiskey.Latitude, lat = whiskies.coord$whiskey.Longitude)
+
+
+```
+```{r}
+library(maps)
+world.map <- map_data ("world")
+
+
+UK.map <- world.map %>% filter(region == "UK")
+
+UK.map %>%
+
+  filter(subregion == "Scotland") %>% 
+
+  ggplot() + 
+
+  geom_map(map = UK.map, 
+
+           aes(x = long, y = lat, map_id = region),
+
+           fill="white", colour = "black") + 
+
+  coord_map() + 
+
+  geom_point(data = whiskey.map, 
+
+             aes(x=lat, y = long, colour = "red", alpha = .9))
+```
+
+
+
+
+parakatw vlepw ta oinopoieia tou data set sto xarth ths Agglias
+```{r}
+#apomonwnw thn Agglia apo ena pagkosmio xarth
+england <- world %>% filter(name_long=="United Kingdom")
+tm_shape(england)+ tm_polygons()+
+  tm_shape(whiskies.coord)+tm_dots(size=0.4)+tm_style("classic")+tm_layout(title= 'Location of Distilleries',  title.position = c('left', 'bottom'))
+
+
+```
+
+
+
+
+
+
+Parakatw blepoume ta oinopoieia pou paraskevazoun ta whiskey tou data set sto xarth ths Agglias. To prasino xrwma deixnei oti to oinopoio paraskevazei whiskey pou  exei to xarakthristiko Tobacco(Kaathgoria Tobacco:1), enw to kokkino xrwma oti to oinopoieio  paragei whiskey xwris to xarakthristiko Tobacco(Kathgoria Tobacco:0). Etsi, blepoume sto xarth perissotera shmeia me kokkina xrwma, kathws h kathgoria Tobacco:0 einai epikratesterh.
+```{r}
+join<-merge(data,whiskey_sf,by="Distillery")
+head(join$geometry)
+join<-mutate(join, Tobacco_logical= ifelse(Tobacco!=0, "true", "false"))
+  
+join<-st_as_sf(join)
+
+
+tm_shape(england) + tm_polygons()+tm_shape(join)+
+  tm_dots(col = "Tobacco_logical", palette=c(A='red', B='green'), stretch.palette = FALSE,size = 0.4,shape =21)+
+    tm_text("Distillery", just = "left", xmod = 0.5, size =0.8,remove.overlap = TRUE )+tm_style("albatross")+
+  tm_tiles("Distilleries and Tobacco")
+
+```
+
+Sto xarth vlepoume gia ta oinopoieia, to bathmo sweetness gia ta whiskey pou paragoun analoga me to megethos ths koukidas
+
+```{r}
+
+
+tm_shape(england) + tm_polygons()+tm_shape(join)+
+  tm_bubbles(size = "Sweetness") +
+    tm_text("Distillery", just = "left", xmod = 0.5, size =0.8,remove.overlap = TRUE )+tm_style("albatross")
+
+
+
+
+```
+
+
+
+Sto xarth vlepoume gia ta oinopoieia, to bathmo Spicy gia ta whiskey pou paragoun analoga me to megethos ths koukidas
+
+```{r}
+
+
+tm_shape(england) + tm_polygons()+tm_shape(join)+
+  tm_bubbles(size = "Spicy") +
+    tm_text("Distillery", just = "left", xmod = 0.5, size =0.8,remove.overlap = TRUE )+tm_style("albatross")
+
+
+
+
+```
+
+
+Sto xarth vlepoume gia ta oinopoieia, to bathmo Winey gia ta whiskey pou paragoun analoga me to megethos ths koukidas
+
+```{r}
+
+
+tm_shape(england) + tm_polygons()+tm_shape(join)+
+  tm_bubbles(size = "Winey") +
+    tm_text("Distillery", just = "left", xmod = 0.5, size =0.8,remove.overlap = TRUE )+tm_style("albatross")
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+

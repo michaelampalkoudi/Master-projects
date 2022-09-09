@@ -1,0 +1,472 @@
+---
+title: "Ηomework 6, Balkoudi Michaela"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+library(raster) 
+library(sf) # Simple Features for R
+library(rnaturalearth) # World Map Data from Natural Earth
+library(stars) # Spatiotemporal Arrays, Raster and Vector Data Cubes
+library(dplyr) # A Grammar of Data Manipulation
+library(ggplot2) # Create Elegant Data Visualisations Using the Grammar of Graphics
+library(ggnewscale) # Multiple Fill and Color Scales in 'ggplot2'
+library(scico) # Colour Palettes Based on the Scientific Colour-Maps
+library(sf)
+library(dplyr)
+library(tmap)
+#install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
+library(spDataLarge)
+library(magrittr)
+library(knitr)
+library(geosphere)
+```
+
+
+Upload files
+```{r}
+#fortwnw to raster arxeio 
+altitude_mediterranean_data <- raster("C:/Users/mixmp/Desktop/διερευνητικη ανάλυση/hw6/data/30n000e_20101117_gmted_mea300.tif")
+#plot apo to raster arxeio ths mesogeiou
+plot(altitude_mediterranean_data)
+
+```
+
+```{r}
+#fortwnw to shp document pou periexei tis prwtevouses twn nomwn
+capitals <- shapefile("C:/Users/mixmp/Desktop/edav_hw8/data/poleis/poleis.shp")
+capitals_sf<-st_as_sf(capitals)
+
+```
+
+```{r}
+#fortwnw to shp file me ta places
+places<-shapefile("C:/Users/mixmp/Desktop/edav_hw8/data/places/places.shp")
+places_sf<-st_as_sf(places)
+
+
+```
+
+```{r}
+#fortwnw to arxeio me tous nomous ths elladas
+perfectures_greece<- shapefile("C:/Users/mixmp/Desktop/edav_hw8/data/GRC_ADM2/GRC_ADM2.shp")
+perfectures_greece_sf<-st_as_sf(perfectures_greece)
+
+
+```
+ERWTHMA 1
+parakatw vlepoume to raster arxeio gia thn ellada
+```{r}
+#to greece_cropped perixei to raster arxeio gia thn ellada
+greece_raster<- st_transform(perfectures_greece_sf, projection(altitude_mediterranean_data))
+greece_cropped = crop(altitude_mediterranean_data, greece_raster)
+plot(greece_cropped)
+```
+
+dhmiourgia raster arxeiou gia thn Ellada
+```{r}
+tmp <- tempdir()
+writeRaster(greece_cropped, filename=file.path(tmp, "Raster_for_greece.tif"), format="GTiff")
+```
+
+
+```{r}
+
+greece_masked = mask(altitude_mediterranean_data, greece_raster)
+plot(greece_masked)
+```
+
+Erwthma 2
+
+upologizw gia kathe prwtevousa ths elladas to upsometro
+```{r}
+#xrhsimopoiw thn entolh extract gia na eksagw tis times twn upsometrwn apo to raster arxeio gia kathe pretevousa
+capitals1<-capitals_sf
+capitals1$altitude<-raster::extract(greece_cropped,capitals_sf)
+print(as.data.frame(select(capitals1,NAME,altitude)))
+
+```
+ERWRHMA 2
+
+sto parakatw xarth apeikonizontai oloi oi nomoi mazi me tis  prwtevouses tous, malista to megethos ths koukidas kathe prwtevousas einai
+analogο tou upsometrou ths prwteuousas
+```{r}
+
+tm_shape(perfectures_greece_sf) + tm_polygons( midpoint = 0, border.col="black")+
+  tm_shape(capitals1) + tm_dots(size="altitude", col="black")+tm_text("ONOMA", just = "left", xmod = 0.5, size =0.5 )+tm_style("natural")
+
+
+```
+Erwthma 3
+
+```{r}
+altitude_perfectures_values = raster::extract(x =altitude_mediterranean_data , y = perfectures_greece_sf, df = TRUE) 
+
+
+#h parakatw entolh prosthetei analoga me to ID tou nomou 2 sthles, mia me to meso upsometro tou nomou (mean_altitude) kai mia me thn tupikh tou apoklish tou nomou(sd_altitude)
+mean_sd_alt_perfecture<-group_by(altitude_perfectures_values, ID) %>% 
+  summarize(mean_altitude = mean(X30n000e_20101117_gmted_mea300, na.rm = TRUE),sd_altitude= sd(X30n000e_20101117_gmted_mea300, na.rm = TRUE))
+
+#prosthetw mia sthlh sto sf arxeio me tous nomous pou ksekinaei apo to 1 kai oxi apo to 0 opws
+#h sthlh feature_id pou ksekinaei apo to 0 kai periexei ta ID twn nomwn, wste na kanw merge me to
+#mean_sd_alt_perfecture tou opoiou h sthlh ID  ksekinaei apo to 1
+
+perfectures_greece_sf1<-perfectures_greece_sf
+
+#prostetw 1 se kathe timh tou feature_id
+perfectures_greece_sf1$ID<-as.numeric(perfectures_greece_sf1$feature_id)+1
+#enwnw to sf arxeio twn nomwn me to arxeio me ta mesa upsometra me thn entolh merge
+perfecture_with_mean_sd_altitude<-merge(perfectures_greece_sf1,mean_sd_alt_perfecture )
+perfecture_with_mean_sd_altitude
+```
+
+ta mesa upsometra kai oi tupikes apokliseis twn nomwn fainontai parakatw
+```{r}
+print(as.data.frame(select(perfecture_with_mean_sd_altitude,NAME,mean_altitude,sd_altitude)))
+
+
+```
+
+choropleth twn nomwn ths Elladas me bash to meso upsometro tous
+```{r}
+tm_shape(perfecture_with_mean_sd_altitude) + tm_fill(col = "mean_altitude")+tm_borders()+tm_text("NAME", just = "left", xmod = 0.5, size =0.4 )+
+  tm_layout(title="Choropleth")
+```
+
+
+
+
+to choropleth twn nomwn ths elladas me bash th tupikh apoklish tou upsometrou tou nomou
+```{r}
+
+tm_shape(perfecture_with_mean_sd_altitude) + tm_fill(col = "sd_altitude")+tm_borders()+tm_text("NAME", just = "left", xmod = 0.5, size =0.4 )+
+tm_layout(title="Choropleth")+tm_style("natural")
+```
+
+
+
+ERWTHMA 4
+```{r}
+#arxika orizw to idio susthma sunentagmenwn stis prwtevouses me to susthma suntetagmenwn twn nomwn
+capitals_changed_crs<-st_transform(capitals1, crs = st_crs(perfectures_greece_sf))
+#me thn entolh st_intersection pairnw to inters pou periexei thn tomh twn nomwn me tis prwtevouses
+#kai vlepoume etsi se poio nomo anhkei kathe prwrevousa
+inters<-st_intersection(capitals_changed_crs,perfecture_with_mean_sd_altitude)%>%select(ONOMA,NAME ,altitude,NAME.1,geometry )
+names(inters)[names(inters) == "NAME"] <- "NAME_OF_TOWN"
+names(inters)[names(inters) == "NAME.1"] <- "NAME"
+
+nomoi_meso_upsometro<-select(perfecture_with_mean_sd_altitude,NAME,mean_altitude)
+nomoi_meso_upsometro<-as.data.frame(nomoi_meso_upsometro)[,-3]
+#kanw left goin gia na prosthesw to meso upsometro kathe nomou
+join<-left_join(inters,nomoi_meso_upsometro,by="NAME")
+#dhmiourgw th nea sthlh pou einai h diafora tou mesou upsometrou tou nomou apo to upsometro ths prwtevousas
+join$diafora<-abs(join$altitude-join$mean_alt)
+
+nomoi_me_diafora<-st_join(perfectures_greece_sf,join,by="NAME")
+
+
+```
+oi nomoi kai h apoluth diafora tou mesou upsometrou tous apo to upsometro ths prwtevousas tous
+```{r}
+as.data.frame(select(nomoi_me_diafora,NAME.x,diafora))
+```
+
+chorelopleth me bash th diafora tou mesou upsometrou tou nomou apo to upsometro ths prwtuousas tou
+```{r}
+tm_shape(nomoi_me_diafora) +tm_fill(col="diafora")+tm_borders(col="black")+ tm_style("natural")+tm_text("NAME.x", just = "left", xmod = 0.5, size =0.4 )
+```
+ERWTHMA 5
+
+top 10 nomoi ws pros to meso upsometro
+```{r}
+#taksinomw se fthinousa seira tous nomous ws pros to meso upsometro kai meta epilegw tous prwtous 10
+perfecture_mean_altitude_top_10<- arrange(perfecture_with_mean_sd_altitude,desc(mean_altitude)) %>% top_n(n = 10, wt =mean_altitude)%>% select(NAME, mean_altitude)
+
+as.data.frame(perfecture_mean_altitude_top_10)
+```
+top 10 nomoi ws pros th tupikh apoklish
+```{r}
+#taksinomw se fthinousa seira tous nomous ws pros th mesi tupikh apoklish kai meta epilegw tous prwtous 10
+perfecture_sd_altitude_top_10<- arrange(perfecture_with_mean_sd_altitude,desc(sd_altitude)) %>% top_n(n = 10, wt =sd_altitude)%>% select(NAME, sd_altitude)
+as.data.frame(perfecture_sd_altitude_top_10)
+```
+ERWTHMA 6
+
+to upsometro gia kathe place
+```{r}
+#kanw ki pali extract sto raster arxeio gia thn ellada me bash to sf arxeio places gia na parw tis times twn upsometrwn tous
+places1<-places_sf
+places1$altitude<-raster::extract(greece_cropped,places_sf)
+as.data.frame(places1%>%select(name,altitude))
+```
+
+o xarths apeikonizei tis topothesies me meso upsometro panw apo 1500 metra kai oi katoikhmenes me tis mh katoikhmenes perioxes perioxes, exoun 
+diaforetiko xrwma
+```{r}
+#krataw mono ta places pou exoun upsometro panw apo 1500
+height_more_than_1500<-filter(places1,altitude>1500)
+
+#create new variable populated with TRUE and FALSE
+height_more_than_1500 <-mutate(height_more_than_1500, populated = ifelse(population!=0, "true", "false"))
+  
+   
+
+tm_shape(perfectures_greece_sf) + tm_polygons( midpoint = 0, border.col="white")+
+  tm_shape(height_more_than_1500) + tm_dots(col = "populated", palette=c(A='red', B='green'), stretch.palette = FALSE,size = 0.4,shape =21)+tm_text("name", just = "left", xmod = 0.5, size =0.8 )+tm_style("albatross")
+
+
+```
+ERWTHMA 7
+
+```{r}
+
+rc <- reclassify(greece_cropped, c(0,500,500, 500,1000,1000, 1000,1500,1500, 1500,2000,2000, 2000,2500,2500, 2500,3000,3000))
+plot(rc)
+
+```
+
+ERWTHMA 8
+
+```{r}
+#me tis 2 prwtes entoles blepw tis gewgraphikes suntetagmenes ths Beroias kai ths Kozanhs apo ta arxeio omws sta opoio exei ginei allagh
+#suntetagmenwn wste na exoun to idio susthma syntetagmenwn panw sto arxeio pou tha prostethoun
+filter(capitals_changed_crs,capitals_changed_crs$ONOMA=="Βέροια")%>%select(geometry,ONOMA)
+
+filter(capitals_changed_crs,capitals_changed_crs$ONOMA=="Κοζάνη")%>%select(geometry,ONOMA)
+#capitals_transect1 periexei to euthugrammo tmhma pou enwnei ta 2 shmeia 
+capitals_transect1 = cbind(c(22.20175,21.78885  ), c(40.52431, 40.30171)) %>%
+  st_linestring() %>% 
+  st_sfc(crs = projection(greece_cropped)) %>% 
+  st_sf()
+plot(greece_cropped)
+plot(capitals_transect1,add=TRUE)
+```
+
+
+```{r}
+raster1 = greece_cropped
+nomoi = st_read("C:/Users/mixmp/Desktop/edav_hw8/data/GRC_ADM2/GRC_ADM2.shp")
+nomoi= st_transform(nomoi, projection(raster1))
+
+plot(nomoi[0])
+plot(capitals_transect1,add=TRUE)
+```
+
+
+```{r}
+#h extract eksagei ta upsometrika dedomena gia to euthugrammo tmhma apo to raster arxeio ths elladas 
+library(ggplot2)
+transect = raster::extract(raster1, capitals_transect1 , 
+                           along = TRUE, cellnumbers = TRUE)
+
+transect_df = purrr::map_dfr(transect, as_data_frame, .id = "ID")
+transect_coords = xyFromCell(raster1, transect_df$cell)
+pair_dist = geosphere::distGeo(transect_coords)[-nrow(transect_coords)]
+transect_df$dist = c(0, cumsum(pair_dist)) 
+ggplot(transect_df, aes(dist, X30n000e_20101117_gmted_mea300)) + geom_line()+ggtitle("Υψόμετρο κατά το μήκος της διαδρομής Βέροιας-Κοζάνης")+
+  ylab("Υψόμετρο")
+```
+
+```{r}
+filter(capitals_changed_crs,capitals_changed_crs$ONOMA=="Θεσσαλονίκη")
+filter(capitals_changed_crs,capitals_changed_crs$ONOMA=="Αθήνα")
+
+capitals_transect2 = cbind(c(22.95004,23.72625 ), c(40.63796, 37.97521)) %>%
+  st_linestring() %>% 
+  st_sfc(crs = projection(greece_cropped)) %>% 
+  st_sf()
+plot(greece_cropped)
+plot(capitals_transect2,add=TRUE)
+```
+
+
+```{r}
+raster2 = greece_cropped
+nomoi = st_read("C:/Users/mixmp/Desktop/edav_hw8/data/GRC_ADM2/GRC_ADM2.shp")
+nomoi = st_transform(nomoi, projection(raster2))
+
+plot(nomoi[0])
+plot(capitals_transect2,add=TRUE)
+```
+
+
+
+
+
+```{r}
+
+transect = raster::extract(raster2, capitals_transect2 , 
+                           along = TRUE, cellnumbers = TRUE)
+
+transect_df = purrr::map_dfr(transect, as_data_frame, .id = "ID")
+transect_coords = xyFromCell(raster1, transect_df$cell)
+pair_dist = geosphere::distGeo(transect_coords)[-nrow(transect_coords)]
+transect_df$dist = c(0, cumsum(pair_dist)) 
+ggplot(transect_df, aes(dist, X30n000e_20101117_gmted_mea300)) + geom_line()+ggtitle("Υψόμετρο κατά το μήκος της διαδρομής θεσσαλονίκης-Αθήνα")+
+  ylab("Υψόμετρο")
+```
+```{r}
+filter(capitals_changed_crs,capitals_changed_crs$ONOMA=="Θεσσαλονίκη")
+filter(capitals_changed_crs,capitals_changed_crs$ONOMA=="Ιωάννινα")
+
+capitals_transect3 = cbind(c(22.95004,20.8573 ), c(40.63796, 39.66874)) %>%
+  st_linestring() %>% 
+  st_sfc(crs = projection(greece_cropped)) %>% 
+  st_sf()
+plot(greece_cropped)
+plot(capitals_transect3,add=TRUE)
+```
+```{r}
+
+
+plot(nomoi[0])
+plot(capitals_transect3,add=TRUE)
+
+
+```
+
+
+```{r}
+transect = raster::extract(raster1, capitals_transect3 , 
+                           along = TRUE, cellnumbers = TRUE)
+
+transect_df = purrr::map_dfr(transect, as_data_frame, .id = "ID")
+transect_coords = xyFromCell(raster1, transect_df$cell)
+pair_dist = geosphere::distGeo(transect_coords)[-nrow(transect_coords)]
+transect_df$dist = c(0, cumsum(pair_dist)) 
+ggplot(transect_df, aes(dist, X30n000e_20101117_gmted_mea300)) + geom_line()+ggtitle("Υψόμετρο κατά το μήκος της διαδρομής θεσσαλονίκης-Ιωαννίνων")+
+  ylab("Υψόμετρο")
+
+
+```
+
+ERWTHMA 9
+fortwnw to arxeio me tis periphereies ths elladas
+```{r}
+periphereies<-shapefile("C:/Users/mixmp/Desktop/edav_hw8/periphereies/periphereies.shp")
+periphereies_sf<-st_as_sf(periphereies)
+
+periphereies_sf_changed_crs<-st_transform(periphereies_sf, crs = st_crs(perfectures_greece_sf))
+```
+
+
+paraktw blepoume tis limnes ths Elladas
+```{r}
+#fortwnw to shp arxeio me tis limnes
+limnes<- shapefile("C:/Users/mixmp/Desktop/edav_hw8/limnes/limnes.shp")
+limnes_sf<-st_as_sf(limnes)
+#metatrepw to susthma suntetagmenwn tou arxeiou me tis lines wste na einai idio me to suthma tou raster arxeiou
+limnes_sf_changed_crs<-st_transform(limnes_sf, crs = st_crs(greece_cropped))
+plot(greece_cropped)
+#sto rasyer arxeio ths elladas prosthetw tis limnes
+plot(limnes_sf_changed_crs,add=TRUE)
+plot(periphereies_sf,add=TRUE)
+```
+
+```{r}
+tomh<-st_intersection(limnes_sf,periphereies_sf)
+
+```
+
+parakatw blepoume ena choropleth twn nomwn me bash  to plhthos twn limnwn tous
+```{r}
+plhthos_limnwn_ana_periphereia<-tomh %>% group_by(PER) %>%tally()#briskw ton arithmo twn limnwn ana periphereia
+plhthos_limnwn_ana_periphereia%>%rename(number_of_lakes=n)
+#plhthos_limnwn_ana_periphereia
+periphereies_with_number_of_lakes<-st_join(periphereies_sf,plhthos_limnwn_ana_periphereia,by=PER)#kanw left join gia na sundesw tis periphereies pou eixa sthn arxh me to plhthos twn limnwn
+periphereies_with_number_of_lakes<-rename(periphereies_with_number_of_lakes,number_of_lakes=n)
+
+tm_shape(periphereies_with_number_of_lakes)+tm_fill(col="number_of_lakes")+tm_borders()+tm_text("PER.y", just = "left", xmod = 0.5, size =0.4)
+```
+
+
+
+
+
+
+
+
+parakate vlepoume to sidhrodromiko diktuo ths elladas
+```{r}
+sidhrodromiko_diktyo<- shapefile("C:/Users/mixmp/Desktop/edav_hw8/data/sidhrodromiko_diktyo/sidhrodromiko_diktyo.shp")
+sidhrodromiko_diktyo_sf<-st_as_sf(sidhrodromiko_diktyo)
+sidhrodromiko_diktyo_sf_changed_crs<-st_transform(sidhrodromiko_diktyo_sf, crs = st_crs(greece_cropped))
+plot(greece_cropped)
+plot(sidhrodromiko_diktyo_sf_changed_crs,add=TRUE)
+```
+
+
+
+sidhrodrommiko diktuo sthn anatoliki makedonia kai thraki
+```{r}
+#apo tis periphereies me thn subset krataw mono thn periphereia antolikis makedonias kai thrakis
+ana_mak_thraki<-subset(periphereies,PER=="Π. ΑΝΑΤΟΛΙΚΗΣ ΜΑΚΕΔΟΝΙΑΣ - ΘΡΑΚΗΣ")
+sidhrodromiko_diktyo_sf_changed_crs_per<-st_transform(sidhrodromiko_diktyo_sf, crs = st_crs(periphereies_sf))
+#pernw th tomh tou sidhrrodromikou diktuou me thn thn periphereia antolikis makedonias kai thrakis
+sidhr_sthn_anat_mak<-st_intersection(subset(periphereies_sf,PER=="Π. ΑΝΑΤΟΛΙΚΗΣ ΜΑΚΕΔΟΝΙΑΣ - ΘΡΑΚΗΣ"),sidhrodromiko_diktyo_sf_changed_crs_per)
+sidhr_sthn_anat_mak_sf<-st_as_sf(sidhr_sthn_anat_mak[0])
+
+plot(ana_mak_thraki,col="yellow")
+plot(sidhr_sthn_anat_mak_sf,col="red",add=TRUE)
+
+```
+siddhrodromiko diktuo sth thessalia
+```{r}
+#apo tis periphereies me thn subset krataw mono thn periphereia ths thessalias
+thessalia<-subset(periphereies,PER=="Π. ΘΕΣΣΑΛΙΑΣ")
+thessalia
+sidhrodromiko_diktyo_sf_changed_crs_per<-st_transform(sidhrodromiko_diktyo_sf, crs = st_crs(periphereies_sf))
+#pernw th tomh tou sidhrrodromikou diktuou me thn thn periphereia thessalias
+sidhr_sthn_thessalia<-st_intersection(subset(periphereies_sf,PER=="Π. ΘΕΣΣΑΛΙΑΣ"),sidhrodromiko_diktyo_sf_changed_crs_per)
+sidhr_sthn_thessalia_sf<-st_as_sf(sidhr_sthn_thessalia[0])
+
+plot(thessalia,col="yellow")
+plot(sidhr_sthn_thessalia_sf,col="red",add=TRUE)
+
+```
+
+
+paraktaw vlepoume to odiko diktuo ths elladas
+```{r}
+roads<- shapefile("C:/Users/mixmp/Desktop/edav_hw8/greece-roads-shape/roads.shp")
+roads_sf<-st_as_sf(roads)
+roads_sf_changed_crs<-st_transform(roads_sf, crs = st_crs(greece_cropped))
+
+
+roads_sf_changed_crs1 = st_transform(roads_sf_changed_crs, projection(greece_cropped))
+plot(greece_cropped)
+plot(roads_sf_changed_crs1,add=TRUE)
+```
+
+
+
+
+
+tha eksagw apo to raster arxeio tis times tou upsometrou gia na brw ta mesa upsometra ana perifereia
+
+```{r}
+
+upsometro_perifereies_values = raster::extract(x = greece_cropped , y = periphereies_sf_changed_crs, df = TRUE)
+```
+
+
+chorelopleth twn periphereiwn me bash to upsometro tous
+```{r}
+#me bash to id twn nomwn upologizw to upsometro tous
+perifereis_meso_upsomeetro<-group_by(upsometro_perifereies_values, ID) %>% 
+  summarize(meso_upsometro = mean(X30n000e_20101117_gmted_mea300, na.rm = TRUE))
+
+#prosthetw mia ID sthlh prokeimenou na thn xrhsimopoihsw gia na enwsw ta dedomena apo tis periphereies me ta mesa upsometra tous pou upologisthkan
+periphereies_sf_changed_crs$ID<-1:nrow(periphereies_sf_changed_crs)
+#me thn merge enwnw to arxeio me tis periphereies me ta upsometra tous
+perifereies_me_mesi_timi_upsometrou<-merge(periphereies_sf_changed_crs,perifereis_meso_upsomeetro)
+
+tm_shape(perifereies_me_mesi_timi_upsometrou)+tm_borders()+tm_text("PER", just = "left", xmod = 0.5, size =0.4 )+tm_polygons(col="meso_upsometro")+tm_style("natural")
+
+
+
+```
+
